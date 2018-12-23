@@ -1,0 +1,418 @@
+<div class="row justify-content-around">
+    <h2><%= stock_name%></h2>
+    <div class="col-12 btn-group btn-group-toggle" data-toggle="buttons">
+        <label class="btn btn-outline-primary active" onclick="draw_daily(30)">
+            <input type="radio" name="options" checked>1m
+        </label>
+        <label class="btn btn-outline-primary" onclick="draw_daily(90)">
+            <input type="radio" name="options">3m
+        </label>
+        <label class="btn btn-outline-primary" onclick="draw_weekly(180)">
+            <input type="radio" name="options">6m
+        </label>
+        <label class="btn btn-outline-primary" onclick="draw_weekly(365)">
+            <input type="radio" name="options">1y
+        </label>
+        <label class="btn btn-outline-primary" onclick="draw_cross_chart(365)">
+            <input type="radio" name="options">Granvile
+        </label>
+        <label class="btn btn-outline-primary" onclick="draw_cross_chart(180)">
+            <input type="radio" name="options">HTS
+        </label>
+        <label class="btn btn-outline-primary" onclick="draw_macd(180)">
+            <input type="radio" name="options">MACD
+        </label>
+        <label class="btn btn-outline-primary" onclick="draw_mq_plus(30)">
+            <input type="radio" name="options">M+
+        </label>
+        <label class="btn btn-outline-primary" onclick="draw_mq_plus(90)">
+            <input type="radio" name="options">Q+
+        </label>
+    </div>
+    <div id="chartContainer" style="height: 370px; width: 100%;"></div>
+    <table class="table">
+        <tr class="<%-analysis[0] ? 'table-success' : 'table-danger'%>">
+            <td>Granvile</td>
+            <td><%-analysis[0] ? "정배열" : "역배열"%></td>
+        </tr>
+        <tr class="<%-analysis[1] ? 'table-success' : 'table-danger'%>">
+            <td>HTS</td>
+            <td><%-analysis[1] ? '정배열' : '역배열'%></td>
+        </tr>
+        <tr class="<%- macd > 3 ? 'table-success' : 'table-danger'%>">
+            <td>MACD</td>
+            <td>
+                <% var i = 0; %>
+                <% for( ; i < macd ; i++) { %>
+                    ★
+                <% } %>
+                <% for ( ; i < 5 ; i++) { %>
+                    ☆
+                <% } %>
+            </td>
+        </tr>
+        <tr class="<%-analysis[2] ? 'table-success' : 'table-danger'%>">
+            <td>Q+</td>
+            <td><%-analysis[2] ? 'BUY' : 'SELL'%></td>
+        </tr>
+        <tr class="<%-analysis[2] ? 'table-success' : 'table-danger'%>">
+            <td>M+</td>
+            <td><%-analysis[2] ? 'BUY' : 'SELL'%></td>
+        </tr>
+    </table>
+    <script>
+        Date.prototype.getDateFormat = function(){
+            return this.toISOString().slice(0,10);
+        }
+
+        var stock_symbol = '<%= stock_code%>';
+
+        var daliy_data = <%- JSON.stringify(stock_data_daily)%>;
+        var weekly_data = <%- JSON.stringify(stock_data_weekly)%>;
+        var candel_data = [];
+        var addition_data = [];
+        var addition2_data = [];
+        var addition3_data = [];
+
+        function draw_daily(period){
+            chart = new CanvasJS.Chart("chartContainer", {
+                theme : "light2",
+                axisX : {
+                    title : "date",
+                    interval : 1,
+                    valueFormatString : "MMM DD"
+                },
+                toolTip : {
+                    shared : true
+                },
+                axisY : {
+                    title : "price",
+                    prefix : "$",
+                    includeZero : false
+                },
+                data: [{
+                    type : "candlestick",
+                    yValueFormatString : "$##0.00",
+                    name : "stock price",
+                    dataPoints : candel_data
+                }]
+            });
+            candel_data.length = 0;
+
+            today = new Date();
+            aday = new Date();
+            aday.setDate(aday.getDate() - period);
+            while(aday <= today){
+                if(aday.getDateFormat()in daliy_data){
+                    candel_data.push({
+                        x : new Date(aday.getTime()),
+                        y : [
+                            parseFloat(daliy_data[aday.getDateFormat()][0]),
+                            parseFloat(daliy_data[aday.getDateFormat()][1]),
+                            parseFloat(daliy_data[aday.getDateFormat()][2]),
+                            parseFloat(daliy_data[aday.getDateFormat()][3])
+                        ]
+                    });
+                }
+                aday.setDate(aday.getDate() +1);
+            }
+
+            chart.render();
+        }
+
+        function draw_mq_plus(period){
+            chart = new CanvasJS.Chart("chartContainer", {
+                theme : "light2",
+                axisX : {
+                    title : "date",
+                    valueFormatString : "MMM DD"
+                },
+                toolTip : {
+                    shared : true
+                },
+                axisY : {
+                    title : "price",
+                    prefix : "$",
+                    includeZero : false
+                },
+                data: [{
+                    type : "candlestick",
+                    yValueFormatString : "$##0.00",
+                    name : "stock price",
+                    dataPoints : candel_data
+                },
+                {
+                    type : "spline",
+                    showInLegend : true,
+                    markerSize : 0,
+                    name : "Weight Average",
+                    yValueFormatString : "$##0.00",
+                    dataPoints : addition_data
+                }]
+            });
+            candel_data.length = 0;
+            addition_data.length = 0;
+
+            today = new Date();
+            aday = new Date();
+            aday.setDate(aday.getDate() - period);
+            while(aday <= today){
+                if(aday.getDateFormat()in daliy_data){
+                    chart_date = new Date(aday.getTime());
+                    candel_data.push({
+                        x : chart_date,
+                        y : [
+                            parseFloat(daliy_data[aday.getDateFormat()][0]),
+                            parseFloat(daliy_data[aday.getDateFormat()][1]),
+                            parseFloat(daliy_data[aday.getDateFormat()][2]),
+                            parseFloat(daliy_data[aday.getDateFormat()][3])
+                        ]
+                    });
+                    addition_data.push({
+                        x : chart_date,
+                        y : parseFloat(daliy_data[aday.getDateFormat()][4])
+                    })
+                }
+                aday.setDate(aday.getDate() + 1);
+            }
+            for(var i = 0 ; i < 30 ; i++){
+                addition_data.push({
+                    x : new Date(aday.getTime()),
+                    y : parseFloat(daliy_data[aday.getDateFormat()][4])
+                })
+                aday.setDate(aday.getDate() + 1)
+            }
+
+            chart.render();
+        }
+
+        function draw_weekly(period){
+            chart = new CanvasJS.Chart("chartContainer", {
+                theme : "light2",
+                axisX : {
+                    title : "date",
+                    interval : 1,
+                    valueFormatString : "MMM DD"
+                },
+                toolTip : {
+                    shared : true
+                },
+                axisY : {
+                    title : "price",
+                    prefix : "$",
+                    includeZero : false
+                },
+                data: [{
+                    type : "candlestick",
+                    yValueFormatString : "$##0.00",
+                    name : "stock price",
+                    dataPoints : candel_data
+                }]
+            });
+            candel_data.length = 0;
+
+            today = new Date();
+            aday = new Date();
+            aday.setDate(aday.getDate() - period);
+            aday.setDate(aday.getDate() - aday.getUTCDay() + 5);
+
+            while(aday <= today){
+                if(aday.getDateFormat()in weekly_data){
+                    candel_data.push({
+                        x : new Date(aday.getTime()),
+                        y : [
+                            parseFloat(weekly_data[aday.getDateFormat()][0]),
+                            parseFloat(weekly_data[aday.getDateFormat()][1]),
+                            parseFloat(weekly_data[aday.getDateFormat()][2]),
+                            parseFloat(weekly_data[aday.getDateFormat()][3])
+                        ]
+                    });
+                }
+                aday.setDate(aday.getDate() + 7);
+            }
+
+            chart.render();
+        }
+
+        function draw_cross_chart(period){
+            chart = new CanvasJS.Chart("chartContainer", {
+                theme : "light2",
+                axisX : {
+                    title : "date",
+                    valueFormatString : "MMM DD"
+                },
+                toolTip : {
+                    shared : true
+                },
+                axisY : {
+                    title : "price",
+                    prefix : "$",
+                    includeZero : false
+                },
+                data: [{
+                    type : "candlestick",
+                    yValueFormatString : "$##0.00",
+                    name : "stock price",
+                    dataPoints : candel_data
+                },
+                {
+                    type : "spline",
+                    showInLegend : true,
+                    markerSize : 0,
+                    name : "Long Period Average",
+                    yValueFormatString : "$##0.00",
+                    dataPoints : addition_data
+                },{
+                    type : "spline",
+                    showInLegend : true,
+                    markerSize : 0,
+                    name : "Short Period Average",
+                    yValueFormatString : "$##0.00",
+                    dataPoints : addition2_data
+                }]
+            });
+            candel_data.length = 0;
+            addition_data.length = 0;
+            addition2_data.length = 0;
+
+            today = new Date();
+            aday = new Date();
+            prev_short = 0
+            prev_long = 0
+            aday.setDate(aday.getDate() - period);
+            while(aday <= today){
+                if(aday.getDateFormat()in weekly_data){
+                    chart_date = new Date(aday.getTime());
+                    candel_data.push({
+                        x : chart_date,
+                        y : [
+                            parseFloat(weekly_data[aday.getDateFormat()][0]),
+                            parseFloat(weekly_data[aday.getDateFormat()][1]),
+                            parseFloat(weekly_data[aday.getDateFormat()][2]),
+                            parseFloat(weekly_data[aday.getDateFormat()][3])
+                        ]
+                    });
+                    current_short = parseFloat(weekly_data[aday.getDateFormat()][4]);
+
+                    if(period > 300){
+                        current_long = parseFloat(weekly_data[aday.getDateFormat()][6]);
+                    }else{
+                        current_long = parseFloat(weekly_data[aday.getDateFormat()][5]);
+                    }
+
+                    long_data = {
+                        x : chart_date,
+                        y : current_long
+                    }
+
+                    if(current_long > current_short && prev_long < prev_short){
+                        long_data['indexLabel'] = "Detch Cross"
+                        long_data['markerSize'] = 30;
+                        long_data['markerType'] = "cross";
+                        long_data['markerColor'] = "tomato";
+                    }else if(current_long < current_short && prev_long > prev_short){
+                        long_data['indexLabel'] = "Golden Cross"
+                        long_data['markerSize'] = 30;
+                        long_data['markerType'] = "cross";
+                        long_data['markerColor'] = "gold";
+                    }
+                    addition_data.push(long_data);
+                    addition2_data.push({
+                        x : chart_date,
+                        y : parseFloat(weekly_data[aday.getDateFormat()][4])
+                    });
+
+                    prev_long = current_long;
+                    prev_short = current_short;
+                }
+                aday.setDate(aday.getDate() + 1);
+            }
+
+            chart.render();
+        }
+
+        function draw_macd(period){
+            chart = new CanvasJS.Chart("chartContainer", {
+                theme : "light2",
+                axisX : {
+                    title : "date",
+                    valueFormatString : "MMM DD"
+                },
+                toolTip : {
+                    shared : true
+                },
+                axisY : {
+                    title : "price",
+                    prefix : "$",
+                    includeZero : false,
+                    stripLines : [{
+                        value : 0,
+                        lable : "0"
+                    }]
+                },
+                data: [{
+                    type : "spline",
+                    showInLegend : true,
+                    markerSize : 0,
+                    name : "MACD",
+                    dataPoints : addition_data
+                },
+                {
+                    type : "spline",
+                    showInLegend : true,
+                    markerSize : 0,
+                    name : "Singal",
+                    dataPoints : addition2_data
+                },{
+                    type : "spline",
+                    showInLegend : true,
+                    markerSize : 0,
+                    name : "Oscillator",
+                    dataPoints : addition3_data
+                }]
+            });
+            addition_data.length = 0;
+            addition2_data.length = 0;
+            addition3_data.length = 0;
+
+            today = new Date();
+            aday = new Date();
+            prev_short = 0
+            prev_long = 0
+            aday.setDate(aday.getDate() - period);
+            while(aday <= today){
+                if(aday.getDateFormat()in weekly_data){
+                    chart_date = new Date(aday.getTime());
+                    macd = weekly_data[aday.getDateFormat()][7];
+                    signal = weekly_data[aday.getDateFormat()][8];
+
+                    addition_data.push({
+                        x : chart_date,
+                        y : macd
+                    })
+
+                    addition2_data.push({
+                        x : chart_date,
+                        y : signal
+                    })
+
+                    addition3_data.push({
+                        x : chart_date,
+                        y : macd - signal
+                    })
+                }
+                aday.setDate(aday.getDate() + 1);
+            }
+
+            chart.render();
+        }
+        draw_daily(30);
+
+    </script>
+    <div class="col-12">
+        <h2>Related News</h2>
+        <% stock_news.forEach(entry => { %>
+            <a href="<%= entry.link%>" style="color:black"><%=entry.title%></a><br />
+        <% }); %>
+    </div>
+</div>

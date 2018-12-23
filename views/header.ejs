@@ -1,0 +1,19 @@
+<div class="row justify-content-around mt-3">
+        <h1 class="text-center">Stock Analyzer</h1>
+        <div id='search_form' class="input-group input-group-lg col-12 mb-3">
+            <input type="text" class="form-control" id="stock_code" maxlength="10" onkeyup="enterkey();" placeholder="Stock Code" autocomplete="off">
+            <div class="input-group-append">
+                <button type="button" class="btn btn-outline-primary" onclick="redirect()">Analysis</button>
+                <script>
+                    function redirect(){
+                        window.location.replace(stock_code.value);
+                    }
+                    function enterkey(){
+                        if(window.event.keyCode == 13){
+                            redirect();
+                        }
+                    }
+                </script>
+            </div>
+        </div>
+</div>
